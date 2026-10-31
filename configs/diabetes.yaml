@@ -1,0 +1,32 @@
+id: diabetes
+name: Diabetes
+# Dataset is user-provided; see docs/datasets.md. No raw data is bundled.
+dataset_path: data/diabetes.csv
+target_column: Outcome
+positive_label: 1
+numeric_columns: [Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age]
+categorical_columns: []
+binary_columns: []
+display_names:
+  Pregnancies: Pregnancies
+  Glucose: Glucose
+  BloodPressure: Blood pressure
+  SkinThickness: Skin thickness
+  Insulin: Insulin
+  BMI: Body mass index
+  DiabetesPedigreeFunction: Diabetes pedigree function
+  Age: Age
+units:
+  Glucose: mg/dL
+  BloodPressure: mmHg
+  BMI: kg/m^2
+  Age: years
+valid_ranges:
+  Pregnancies: [0, 20]
+  Glucose: [0, 400]
+  BloodPressure: [0, 250]
+  SkinThickness: [0, 120]
+  Insulin: [0, 1000]
+  BMI: [0, 100]
+  DiabetesPedigreeFunction: [0, 3]
+  Age: [1, 120]

@@ -1,0 +1,42 @@
+id: ckd
+name: Chronic Kidney Disease
+# Dataset is user-provided; see docs/datasets.md. No raw data is bundled.
+dataset_path: data/ckd.csv
+target_column: classification
+positive_label: ckd
+numeric_columns: [age, bp, bgr, bu, sc, sod, pot, hemo, pcv, wc, rc]
+categorical_columns: [sg, al, su, rbc, pc, pcc, ba, htn, dm, cad, appet, pe, ane]
+binary_columns: [rbc, pc, pcc, ba, htn, dm, cad, pe, ane]
+display_names:
+  age: Age
+  bp: Blood pressure
+  bgr: Blood glucose
+  bu: Blood urea
+  sc: Serum creatinine
+  sod: Sodium
+  pot: Potassium
+  hemo: Hemoglobin
+  pcv: Packed cell volume
+  wc: White blood cell count
+  rc: Red blood cell count
+units:
+  age: years
+  bp: mmHg
+  bgr: mg/dL
+  bu: mg/dL
+  sc: mg/dL
+  sod: mEq/L
+  pot: mEq/L
+  hemo: g/dL
+valid_ranges:
+  age: [1, 120]
+  bp: [30, 300]
+  bgr: [0, 1000]
+  bu: [0, 300]
+  sc: [0, 50]
+  sod: [80, 200]
+  pot: [1, 20]
+  hemo: [0, 30]
+  pcv: [1, 100]
+  wc: [100, 100000]
+  rc: [0, 20]
