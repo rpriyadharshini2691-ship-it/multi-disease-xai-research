@@ -7,15 +7,43 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from xai_dashboard.api.deps import get_current_user, get_session
+from xai_dashboard.api.deps import get_current_user, get_model_registry, get_session
 from xai_dashboard.api.routers.performance import latest_evaluation
+from xai_dashboard.api.routers.predictions import execute_prediction
 from xai_dashboard.api.routers.reliability import latest_reliability
+from xai_dashboard.api.schemas import PredictionRequest
 from xai_dashboard.core.data.diseases import load_disease_configs
-from xai_dashboard.core.reports.builder import build_evaluation_report, build_research_report
+from xai_dashboard.core.ml.registry import ModelRegistry
+from xai_dashboard.core.reports.builder import (
+    build_evaluation_report,
+    build_prediction_report,
+    build_research_report,
+)
 from xai_dashboard.db.models import ReportLog, User
 from xai_dashboard.settings import Settings, get_settings
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+@router.post("/prediction.pdf")
+def prediction_report(
+    payload: PredictionRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+    registry: ModelRegistry = Depends(get_model_registry),
+) -> Response:
+    _, details = execute_prediction(payload, user, db, settings, registry)
+    pdf = build_prediction_report(details)
+    reference = str(details["prediction_reference"])
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="prediction-{reference}.pdf"',
+            "X-Prediction-Reference": reference,
+        },
+    )
 
 
 @router.get("/{disease_id}/evaluation.pdf")

@@ -28,20 +28,52 @@ if diseases:
         submitted = st.form_submit_button("Estimate positive-class score", type="primary")
     if submitted:
         try:
-            result = client.post(
-                "/predict",
-                {
-                    "disease_id": disease["id"],
-                    "features": features,
-                    "model_name": model_name,
-                    "consent": consent,
-                },
-            )
+            request_payload = {
+                "disease_id": disease["id"],
+                "features": features,
+                "model_name": model_name,
+                "consent": consent,
+            }
+            result = client.post("/predict", request_payload)
+            st.session_state["last_prediction_report_request"] = {
+                **request_payload,
+                "consent": False,
+            }
             show_score(result["positive_class_score"], result["disclaimer"])
             st.caption(
                 "Score stored with your account."
                 if result["stored"]
                 else "This prediction was not stored."
+            )
+            st.caption(
+                f"Model: {result['model_name']} ({result['model_version']}) | "
+                f"Prediction reference: {result['prediction_reference']}"
+            )
+            if result["additivity_passed"]:
+                st.success("The SHAP explanation passed probability-score validation.")
+            else:
+                st.warning("The SHAP explanation is not validated for this prediction.")
+            st.dataframe(
+                result["important_features"],
+                use_container_width=True,
+                hide_index=True,
+            )
+        except ApiError as exc:
+            st.error(str(exc))
+
+if st.session_state.get("last_prediction_report_request"):
+    if st.button("Generate prediction PDF"):
+        try:
+            pdf, reference = client.post_download(
+                "/reports/prediction.pdf",
+                st.session_state["last_prediction_report_request"],
+            )
+            filename = f"prediction-{reference or 'report'}.pdf"
+            st.download_button(
+                "Download PDF",
+                data=pdf,
+                file_name=filename,
+                mime="application/pdf",
             )
         except ApiError as exc:
             st.error(str(exc))

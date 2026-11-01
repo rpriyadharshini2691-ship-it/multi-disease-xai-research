@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from xai_dashboard.api import deps, main
+from xai_dashboard.api.routers import predictions as prediction_router
 from xai_dashboard.core.auth.security import hash_password
 from xai_dashboard.db.models import Base, PredictionLog, User
 from xai_dashboard.settings import Settings
@@ -46,6 +47,30 @@ def test_registration_rbac_and_consent_only_prediction_logging(tmp_path, monkeyp
     joblib.dump(
         {"models": {"weighted_ensemble": FixedScoreModel()}},
         model_dir / "models_test.joblib",
+    )
+
+    def fixed_prediction_details(
+        config, features, model_name, model_bundle, model_version, dataset_path, artifacts_dir
+    ):
+        del features, model_bundle, dataset_path, artifacts_dir
+        return {
+            "prediction_reference": "PRED-TEST123456",
+            "created_at": "2026-11-01T00:00:00+00:00",
+            "disease_id": config.id,
+            "disease_name": config.name,
+            "model_name": model_name,
+            "model_version": model_version,
+            "predicted_class": "positive",
+            "positive_class_score": 0.65,
+            "decision_threshold": 0.5,
+            "important_features": [],
+            "additivity_error": 0.0,
+            "additivity_passed": True,
+            "score_match_passed": True,
+        }
+
+    monkeypatch.setattr(
+        prediction_router, "create_prediction_details", fixed_prediction_details
     )
     client = TestClient(main.app)
     try:

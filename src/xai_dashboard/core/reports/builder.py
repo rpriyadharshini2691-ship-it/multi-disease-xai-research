@@ -3,6 +3,7 @@
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -57,6 +58,102 @@ def build_evaluation_report(disease_name: str, artifact: dict[str, Any]) -> byte
         )
     )
     story.append(table)
+    document.build(story)
+    return buffer.getvalue()
+
+
+def build_prediction_report(details: dict[str, Any]) -> bytes:
+    """Create a non-persisted, individual explanation PDF from one prediction result."""
+    buffer = BytesIO()
+    document = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    body = styles["BodyText"]
+    story: list[Any] = [
+        Paragraph(
+            "Design and Development of a Reliable Explainable Artificial Intelligence "
+            "Framework for Multiple Disease Risk Prediction Using Ensemble Machine Learning "
+            "and SHAP-Based Interpretation",
+            styles["Title"],
+        ),
+        Spacer(1, 12),
+        Paragraph("Individual prediction explanation report", styles["Heading2"]),
+        Paragraph(
+            f"Prediction reference: {escape(str(details['prediction_reference']))}", body
+        ),
+        Paragraph(f"Disease: {escape(str(details['disease_name']))}", body),
+        Paragraph(f"Selected model: {escape(str(details['model_name']))}", body),
+        Paragraph(f"Model version: {escape(str(details['model_version']))}", body),
+        Paragraph(
+            f"Date and time (UTC): {escape(str(details['created_at']))}", body
+        ),
+        Spacer(1, 8),
+        Paragraph(
+            f"Model result: {escape(str(details['predicted_class']).title())}",
+            styles["Heading3"],
+        ),
+        Paragraph(
+            "Positive-class score: "
+            f"{float(details['positive_class_score']):.4f} "
+            f"(threshold {float(details['decision_threshold']):.2f})",
+            body,
+        ),
+        Spacer(1, 8),
+        Paragraph("Important SHAP contributors", styles["Heading3"]),
+    ]
+    contributions = details.get("important_features", [])
+    if contributions:
+        rows = [["Feature", "Submitted value", "SHAP contribution", "Direction"]]
+        for item in contributions:
+            rows.append(
+                [
+                    escape(str(item["feature"])),
+                    escape(str(item["value"])),
+                    f"{float(item['shap_value']):+.6f}",
+                    escape(str(item["direction"])),
+                ]
+            )
+        story.append(_styled_table(rows))
+    else:
+        story.append(Paragraph("No finite feature contributions were available.", body))
+    story.append(Spacer(1, 8))
+    if details.get("additivity_passed") and details.get("score_match_passed"):
+        story.append(
+            Paragraph(
+                "SHAP validation: baseline plus feature contributions matched the model's "
+                "positive-class score within tolerance.",
+                body,
+            )
+        )
+    else:
+        story.append(
+            Paragraph(
+                "Warning: the SHAP explanation did not pass additivity or score matching and "
+                "must be treated as unvalidated.",
+                body,
+            )
+        )
+        if details.get("validation_warning"):
+            story.append(Paragraph(escape(str(details["validation_warning"])), body))
+    story.extend(
+        [
+            Spacer(1, 10),
+            Paragraph("Limitations and research disclaimer", styles["Heading3"]),
+            Paragraph(
+                "This model-estimated positive-class score is not a clinical probability, "
+                "diagnosis, or treatment recommendation. SHAP describes the selected model's "
+                "behavior for this input; it does not establish causation, medical correctness, "
+                "or clinical reliability. This research and education tool is not a clinical "
+                "device. Consult a qualified healthcare professional for health concerns.",
+                body,
+            ),
+            Paragraph(
+                "The report is generated in memory. Submitted health inputs and this PDF are "
+                "not persisted by the report endpoint. A prediction score is stored in account "
+                "activity only when explicit consent is supplied.",
+                body,
+            ),
+        ]
+    )
     document.build(story)
     return buffer.getvalue()
 

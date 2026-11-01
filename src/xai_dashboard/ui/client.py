@@ -74,3 +74,27 @@ class ApiClient:
                 return cast(bytes, response.read())
         except (HTTPError, URLError) as exc:
             raise ApiError(getattr(exc, "code", 503), "Report is not available yet.") from exc
+
+    def post_download(self, path: str, payload: Any) -> tuple[bytes, str | None]:
+        headers = {"Accept": "application/pdf", "Content-Type": "application/json"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        request = Request(
+            f"{self.base_url}{path}",
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=60) as response:
+                return response.read(), response.headers.get("X-Prediction-Reference")
+        except HTTPError as exc:
+            raw = exc.read().decode("utf-8", errors="replace")
+            try:
+                details = json.loads(raw)
+                message = details.get("error", {}).get("message", details.get("detail", raw))
+            except json.JSONDecodeError:
+                message = raw or "Report request failed"
+            raise ApiError(exc.code, str(message)) from exc
+        except URLError as exc:
+            raise ApiError(503, "API is unavailable. Start the FastAPI service and retry.") from exc
