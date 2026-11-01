@@ -4,14 +4,14 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from xai_dashboard.api.deps import get_current_user, require_roles
 from xai_dashboard.core.data.diseases import load_disease_configs
 from xai_dashboard.core.ml.jobs import get_job, submit_job
-from xai_dashboard.core.ml.training import train_disease
-from xai_dashboard.core.reliability.runner import run_reliability
 from xai_dashboard.db.models import User
+from xai_dashboard.services.reliability import run_and_record_reliability
+from xai_dashboard.services.training import train_and_register_models
 from xai_dashboard.settings import Settings, get_settings
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -19,6 +19,12 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 class TrainRequest(BaseModel):
     dataset_path: Path | None = None
+
+
+class ReliabilityRequest(BaseModel):
+    dataset_path: Path | None = None
+    repetitions: int = Field(default=30, ge=30)
+    sample_size: int = Field(default=8, ge=2)
 
 
 @router.post("/train/{disease_id}", status_code=202)
@@ -43,7 +49,15 @@ def start_training(
                 "message": "Provide a local dataset file before training.",
             },
         )
-    job_id = submit_job("training", lambda: train_disease(config, dataset, settings.artifacts_dir))
+    job_id = submit_job(
+        "training",
+        lambda: train_and_register_models(
+            config,
+            dataset,
+            settings.artifacts_dir,
+            created_by_id=_user.id,
+        ),
+    )
     return {"job_id": job_id, "status": "queued"}
 
 
@@ -61,8 +75,8 @@ def job_status(job_id: str, _user: User = Depends(get_current_user)) -> dict[str
 @router.post("/reliability/{disease_id}", status_code=202)
 def start_reliability(
     disease_id: str,
-    payload: TrainRequest,
-    _user: User = Depends(require_roles("admin", "researcher")),
+    payload: ReliabilityRequest,
+    user: User = Depends(require_roles("admin", "researcher")),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, str]:
     config = load_disease_configs(settings.configs_dir).get(disease_id)
@@ -81,6 +95,14 @@ def start_reliability(
             },
         )
     job_id = submit_job(
-        "reliability", lambda: run_reliability(config, dataset, settings.artifacts_dir)
+        "reliability",
+        lambda: run_and_record_reliability(
+            config,
+            dataset,
+            settings.artifacts_dir,
+            user.id,
+            repetitions=payload.repetitions,
+            sample_size=payload.sample_size,
+        ),
     )
     return {"job_id": job_id, "status": "queued"}

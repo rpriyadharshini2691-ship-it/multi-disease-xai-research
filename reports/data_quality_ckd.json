@@ -1,0 +1,136 @@
+{
+  "disease_id": "ckd",
+  "dataset_name": "Chronic Kidney Disease",
+  "generated_at": "2026-11-01T08:37:28.751260+00:00",
+  "source": {
+    "name": "Chronic Kidney Disease",
+    "uci_id": 336,
+    "url": "https://archive.ics.uci.edu/dataset/336/chronic+kidney+disease",
+    "doi": "10.24432/C5G020",
+    "original_target": "class (ckd / notckd)",
+    "license": "CC BY 4.0"
+  },
+  "raw_file": "C:/Drives/Priya/3rd_Sem_Project/multi-disease-xai-research/data/ckd.csv",
+  "raw_sha256": "89e386a897c22bb5c42ff976917977bee61ae1426f6e0d3e4ff344a1b4a09b90",
+  "original_rows": 400,
+  "original_columns": 25,
+  "original_duplicate_rows": 0,
+  "original_missing_cells": 1012,
+  "original_missing_by_column": {
+    "age": 9,
+    "bp": 12,
+    "sg": 47,
+    "al": 46,
+    "su": 49,
+    "rbc": 152,
+    "pc": 65,
+    "pcc": 4,
+    "ba": 4,
+    "bgr": 44,
+    "bu": 19,
+    "sc": 17,
+    "sod": 87,
+    "pot": 88,
+    "hemo": 52,
+    "pcv": 71,
+    "wbcc": 106,
+    "rbcc": 131,
+    "htn": 2,
+    "dm": 2,
+    "cad": 2,
+    "appet": 1,
+    "pe": 1,
+    "ane": 1
+  },
+  "target_column": "target",
+  "target_labels_before_mapping": {
+    "1": 250,
+    "0": 150
+  },
+  "target_labels_after_mapping": {
+    "1": 250,
+    "0": 150
+  },
+  "class_distribution_before_cleaning": {
+    "1": 250,
+    "0": 150
+  },
+  "class_distribution_final": {
+    "1": 250,
+    "0": 150
+  },
+  "duplicate_analysis": {
+    "exact_duplicate_rows": 0,
+    "distinct_rows": 400,
+    "feature_groups_with_repeats": 0,
+    "largest_repeat_group": 1,
+    "feature_groups_with_conflicting_labels": 0,
+    "policy": "keep",
+    "rationale": "No exact duplicate rows exist in the CKD data."
+  },
+  "cleaning_operations": [
+    {
+      "operation": "map_target",
+      "detail": {
+        "type": "label_map",
+        "labels": {
+          "ckd": 1,
+          "notckd": 0
+        }
+      },
+      "labels_before": {
+        "1": 250,
+        "0": 150
+      },
+      "labels_after": {
+        "1": 250,
+        "0": 150
+      }
+    },
+    {
+      "operation": "drop_rows_with_missing_target",
+      "rows_affected": 0,
+      "detail": "Missing targets are never imputed; rows are dropped before training."
+    },
+    {
+      "operation": "duplicate_handling",
+      "rows_affected": 0,
+      "detail": {
+        "exact_duplicate_rows": 0,
+        "distinct_rows": 400,
+        "feature_groups_with_repeats": 0,
+        "largest_repeat_group": 1,
+        "feature_groups_with_conflicting_labels": 0,
+        "policy": "keep",
+        "rationale": "No exact duplicate rows exist in the CKD data."
+      }
+    }
+  ],
+  "final_rows": 400,
+  "final_columns": 25,
+  "final_feature_count": 24,
+  "final_missing_cells": 1012,
+  "missing_values_note": "Remaining missing feature values are imputed inside the sklearn pipelines, fitted on training rows only.",
+  "verification": {
+    "status": "verified_with_notes",
+    "reference": "UCI 336 chronic_kidney_disease.arff (the file ships with 400 rows)",
+    "reference_rows": 400,
+    "reference_raw_class_labels": {
+      "ckd": 250,
+      "notckd": 149,
+      "no": 1
+    },
+    "columns_match_after_renaming": true,
+    "differing_row_indices_zero_based": [
+      369
+    ],
+    "note": "Data row 369 (0-based) is malformed in the official ARFF: it has an extra empty field that shifts dm/cad/appet/pe/ane/class by one position. The local CSV holds a realigned version of that row; every other cell matches the official file.",
+    "column_renames": {
+      "wc": "wbcc",
+      "rc": "rbcc",
+      "class": "target"
+    }
+  },
+  "processed_file": "C:/Drives/Priya/3rd_Sem_Project/multi-disease-xai-research/data/processed/ckd.csv",
+  "processed_sha256": "89e386a897c22bb5c42ff976917977bee61ae1426f6e0d3e4ff344a1b4a09b90"
+}

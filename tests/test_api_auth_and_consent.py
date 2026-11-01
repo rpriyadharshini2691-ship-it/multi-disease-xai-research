@@ -52,6 +52,7 @@ def test_registration_rbac_and_consent_only_prediction_logging(tmp_path, monkeyp
         admin_registration = client.post(
             "/api/v1/auth/register",
             json={
+                "username": "notadmin",
                 "email": "admin@example.com",
                 "full_name": "Not an Admin",
                 "password": "valid-password-123",
@@ -63,6 +64,7 @@ def test_registration_rbac_and_consent_only_prediction_logging(tmp_path, monkeyp
         registration = client.post(
             "/api/v1/auth/register",
             json={
+                "username": "researcher1",
                 "email": "researcher@example.com",
                 "full_name": "Researcher One",
                 "password": "valid-password-123",
@@ -81,14 +83,22 @@ def test_registration_rbac_and_consent_only_prediction_logging(tmp_path, monkeyp
         assert forbidden.json()["error"]["code"] == "forbidden"
 
         features = {
-            "Pregnancies": 1,
-            "Glucose": 100,
-            "BloodPressure": 70,
-            "SkinThickness": 20,
-            "Insulin": 70,
-            "BMI": 25,
-            "DiabetesPedigreeFunction": 0.5,
-            "Age": 40,
+            "age": 40,
+            "gender": "Female",
+            "polyuria": "No",
+            "polydipsia": "No",
+            "sudden_weight_loss": "No",
+            "weakness": "No",
+            "polyphagia": "No",
+            "genital_thrush": "No",
+            "visual_blurring": "No",
+            "itching": "No",
+            "irritability": "No",
+            "delayed_healing": "No",
+            "partial_paresis": "No",
+            "muscle_stiffness": "No",
+            "alopecia": "No",
+            "obesity": "No",
         }
         prediction = client.post(
             "/api/v1/predict",
@@ -119,6 +129,7 @@ def test_registration_rbac_and_consent_only_prediction_logging(tmp_path, monkeyp
         with session_factory() as session:
             session.add(
                 User(
+                    username="adminuser",
                     email="admin@example.com",
                     full_name="Admin User",
                     password_hash=hash_password("valid-admin-password-123"),

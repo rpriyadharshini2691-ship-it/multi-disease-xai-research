@@ -31,10 +31,20 @@ Open `http://127.0.0.1:8502`. Register as `researcher` or `clinician`. Public re
 
 No datasets or pretrained models are bundled. Review `docs/datasets.md`, confirm dataset permissions, and prepare local CSV files matching the YAML configs. Column names, target labels, units, and input ranges are defined in `configs/`.
 
-Train a model and create evaluation artifacts:
+After placing authorized CSVs at the configured paths and applying the database migrations, train and register all available disease models:
 
 ```powershell
-python scripts/train.py diabetes
+make migrate
+make train
+```
+
+For a single disease, use `python scripts/train.py diabetes`. Training evaluates Logistic Regression, Random Forest, XGBoost, equal-weight soft voting, and OOF-AUC-weighted soft voting. It prints the eight held-out metrics and repeated-CV results with bootstrap confidence intervals. Versioned Joblib bundles and per-model database registry records are created from the fitted training pipeline.
+
+Inspect the configured datasets and profile any local CSVs:
+
+```powershell
+python scripts/download_data.py
+python scripts/profile_data.py
 ```
 
 Run the three reliability experiments after training:

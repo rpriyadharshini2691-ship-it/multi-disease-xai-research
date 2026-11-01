@@ -12,6 +12,7 @@ SCORE_DISCLAIMER = (
 
 
 class RegisterRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=160)
     password: str = Field(min_length=10, max_length=128)
@@ -21,10 +22,20 @@ class RegisterRequest(BaseModel):
 class UserProfile(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    username: str
     email: EmailStr
     full_name: str
     role: str
+    is_active: bool
     created_at: datetime
+
+
+class RoleUpdate(BaseModel):
+    role: str = Field(min_length=1, max_length=20)
+
+
+class StatusUpdate(BaseModel):
+    is_active: bool
 
 
 class TokenResponse(BaseModel):
@@ -36,9 +47,13 @@ class TokenResponse(BaseModel):
 class PredictionRequest(BaseModel):
     disease_id: str
     features: dict[str, Any]
-    model_name: Literal["logistic_regression", "random_forest", "xgboost", "weighted_ensemble"] = (
-        "weighted_ensemble"
-    )
+    model_name: Literal[
+        "logistic_regression",
+        "random_forest",
+        "xgboost",
+        "equal_weight_ensemble",
+        "weighted_ensemble",
+    ] = "weighted_ensemble"
     consent: bool = False
 
 

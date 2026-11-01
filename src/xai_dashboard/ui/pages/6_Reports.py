@@ -23,6 +23,17 @@ if diseases:
             )
         except ApiError as exc:
             st.info(str(exc))
+    if st.button("Prepare research report PDF", icon=":material/science:"):
+        try:
+            research_pdf = client.download(f"/reports/{disease['id']}/research.pdf")
+            st.download_button(
+                "Download research PDF",
+                data=research_pdf,
+                file_name=f"{disease['id']}-research.pdf",
+                mime="application/pdf",
+            )
+        except ApiError as exc:
+            st.info(str(exc))
 st.caption(
     "Reliability findings, when generated, mean consistency under tested "
     "conditions only and never imply medical correctness."

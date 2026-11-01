@@ -16,7 +16,7 @@ if not st.session_state.access_token:
     login_tab, register_tab = st.tabs(["Sign in", "Create account"])
     with login_tab:
         with st.form("login_form"):
-            email = st.text_input("Email")
+            email = st.text_input("Username or email")
             password = st.text_input("Password", type="password")
             submitted = st.form_submit_button("Sign in")
         if submitted:
@@ -30,6 +30,7 @@ if not st.session_state.access_token:
     with register_tab:
         with st.form("register_form"):
             full_name = st.text_input("Full name")
+            register_username = st.text_input("Username (3-50 chars: a-z, 0-9, _ . -)")
             register_email = st.text_input("Email address")
             register_password = st.text_input("Password (10+ characters)", type="password")
             role = st.selectbox("Role", ["researcher", "clinician"])
@@ -39,6 +40,7 @@ if not st.session_state.access_token:
                 ApiClient().post(
                     "/auth/register",
                     {
+                        "username": register_username,
                         "full_name": full_name,
                         "email": register_email,
                         "password": register_password,
@@ -59,6 +61,10 @@ with left:
     st.write(f"Signed in as **{user['role']}**")
 with right:
     if st.button("Sign out", icon=":material/logout:"):
+        try:
+            client.logout()
+        except ApiError:
+            pass  # token already expired or revoked; local session is cleared regardless
         st.session_state.access_token = None
         st.session_state.user = None
         st.rerun()

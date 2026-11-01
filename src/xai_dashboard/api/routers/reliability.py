@@ -13,8 +13,17 @@ router = APIRouter(prefix="/reliability", tags=["reliability"])
 
 
 def latest_reliability(directory: Path) -> Path | None:
-    files = sorted(directory.glob("reliability_*.json"))
-    return files[-1] if files else None
+    files = sorted(
+        directory.glob("reliability_*.json"), key=lambda path: path.stat().st_mtime_ns, reverse=True
+    )
+    for path in files:
+        try:
+            artifact = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if artifact.get("schema_version") == 2:
+            return path
+    return None
 
 
 @router.get("/{disease_id}")

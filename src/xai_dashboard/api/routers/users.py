@@ -1,12 +1,13 @@
 """Current profile and administrator-only account activity."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from xai_dashboard.api.deps import get_current_user, get_session, require_roles
-from xai_dashboard.api.schemas import SCORE_DISCLAIMER
+from xai_dashboard.api.schemas import SCORE_DISCLAIMER, RoleUpdate, StatusUpdate, UserProfile
 from xai_dashboard.db.models import PredictionLog, User
+from xai_dashboard.services.auth import AccountError, set_user_active, set_user_role
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -15,9 +16,11 @@ router = APIRouter(prefix="/users", tags=["users"])
 def profile(user: User = Depends(get_current_user)) -> dict[str, object]:
     return {
         "id": user.id,
+        "username": user.username,
         "email": user.email,
         "full_name": user.full_name,
         "role": user.role,
+        "is_active": user.is_active,
         "created_at": user.created_at,
     }
 
@@ -55,9 +58,11 @@ def list_users(
         result.append(
             {
                 "id": user.id,
+                "username": user.username,
                 "email": user.email,
                 "full_name": user.full_name,
                 "role": user.role,
+                "is_active": user.is_active,
                 "created_at": user.created_at,
                 "prediction_count": count,
                 "activity": [
@@ -72,3 +77,46 @@ def list_users(
             }
         )
     return result
+
+
+def _target(db: Session, user_id: int) -> User:
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(
+            status_code=404, detail={"code": "user_not_found", "message": "User not found."}
+        )
+    return target
+
+
+@router.patch("/{user_id}/status", response_model=UserProfile)
+def update_status(
+    user_id: int,
+    payload: StatusUpdate,
+    admin: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_session),
+) -> UserProfile:
+    try:
+        return UserProfile.model_validate(
+            set_user_active(db, admin, _target(db, user_id), payload.is_active)
+        )
+    except AccountError as exc:
+        raise HTTPException(
+            status_code=409, detail={"code": "account_rule_violation", "message": str(exc)}
+        ) from exc
+
+
+@router.patch("/{user_id}/role", response_model=UserProfile)
+def update_role(
+    user_id: int,
+    payload: RoleUpdate,
+    admin: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_session),
+) -> UserProfile:
+    try:
+        return UserProfile.model_validate(
+            set_user_role(db, admin, _target(db, user_id), payload.role)
+        )
+    except AccountError as exc:
+        raise HTTPException(
+            status_code=409, detail={"code": "account_rule_violation", "message": str(exc)}
+        ) from exc

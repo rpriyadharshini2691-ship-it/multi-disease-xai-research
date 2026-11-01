@@ -8,9 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import joblib
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -30,14 +27,18 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
 )
-from sklearn.model_selection import RepeatedStratifiedKFold, cross_val_score
+from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
 from xai_dashboard.core.data.diseases import DiseaseConfig
-from xai_dashboard.core.data.loaders import load_dataset, stratified_train_test_split
-from xai_dashboard.core.data.preprocessing import build_model_pipeline
+from xai_dashboard.core.data.loader import load_dataset, stratified_split
+from xai_dashboard.core.data.preprocessing import build_pipeline
+from xai_dashboard.core.data.quality import file_sha256
 from xai_dashboard.core.xai.artifacts import generate_global_explanations
+from xai_dashboard.core.xai.ensemble import encode_ensemble_inputs
+
+plt.switch_backend("Agg")
 
 METRIC_NAMES = (
     "accuracy",
@@ -97,7 +98,33 @@ def _metrics(
 
 
 def _pipeline(config: DiseaseConfig, estimator: Any) -> Pipeline:
-    return build_model_pipeline(config, estimator)
+    return build_pipeline(config, estimator)
+
+
+def _oof_roc_auc_weights(
+    pipelines: dict[str, Pipeline],
+    features: pd.DataFrame,
+    target: NDArray[np.int64],
+    splits: int,
+    seed: int,
+) -> dict[str, float]:
+    """Normalize each model's ROC-AUC from pooled out-of-fold train predictions."""
+    splitter = StratifiedKFold(n_splits=splits, shuffle=True, random_state=seed)
+    aucs: dict[str, float] = {}
+    for name, pipeline in pipelines.items():
+        out_of_fold = cross_val_predict(
+            pipeline,
+            features,
+            target,
+            cv=splitter,
+            method="predict_proba",
+            n_jobs=1,
+        )[:, 1]
+        aucs[name] = max(0.0, float(roc_auc_score(target, out_of_fold)))
+    total = sum(aucs.values())
+    if total == 0:
+        return {name: 1.0 / len(aucs) for name in aucs}
+    return {name: auc / total for name, auc in aucs.items()}
 
 
 def train_disease(
@@ -110,19 +137,14 @@ def train_disease(
     cv_repeats: int = 3,
 ) -> dict[str, Any]:
     """Fit four estimators and save metrics/plots/models only from actual data."""
-    features, target_labels = load_dataset(config, dataset_path)
-    target = np.asarray(target_labels == config.positive_label, dtype=int)
-    counts = np.bincount(target, minlength=2)
+    frame = load_dataset(config, dataset_path)
+    split = stratified_split(frame, config, test_size=test_size, seed=seed)
+    x_train, x_test = split.x_train, split.x_test
+    y_train, y_test = split.y_train, split.y_test
+    counts = np.bincount(y_train, minlength=2)
     splits = min(cv_splits, int(counts.min()))
     if splits < 2:
         raise ValueError("At least two examples per class are required for stratified evaluation")
-    split = stratified_train_test_split(features, target, test_size=test_size, seed=seed)
-    x_train, x_test, y_train, y_test = (
-        split.x_train,
-        split.x_test,
-        split.y_train,
-        split.y_test,
-    )
     estimators = {
         "logistic_regression": LogisticRegression(
             max_iter=2000, class_weight="balanced", random_state=seed
@@ -145,36 +167,22 @@ def train_disease(
     cv = RepeatedStratifiedKFold(n_splits=splits, n_repeats=cv_repeats, random_state=seed)
     fold_metrics: dict[str, list[dict[str, float]]] = {
         **{name: [] for name in pipelines},
+        "equal_weight_ensemble": [],
         "weighted_ensemble": [],
     }
-    for training_indices, validation_indices in cv.split(x_train, y_train):
+    for fold_index, (training_indices, validation_indices) in enumerate(cv.split(x_train, y_train)):
         fold_x_train = x_train.iloc[training_indices]
         fold_y_train = y_train[training_indices]
         fold_x_valid = x_train.iloc[validation_indices]
         fold_y_valid = y_train[validation_indices]
         inner_splits = min(3, int(np.bincount(fold_y_train, minlength=2).min()))
         if inner_splits >= 2:
-            inner_scores = {
-                name: max(
-                    0.0,
-                    float(
-                        cross_val_score(
-                            pipeline,
-                            fold_x_train,
-                            fold_y_train,
-                            cv=inner_splits,
-                            scoring="roc_auc",
-                            n_jobs=1,
-                        ).mean()
-                    ),
-                )
-                for name, pipeline in pipelines.items()
-            }
-            inner_total = sum(inner_scores.values())
-            fold_weights = (
-                {name: value / inner_total for name, value in inner_scores.items()}
-                if inner_total
-                else {name: 1.0 / len(pipelines) for name in pipelines}
+            fold_weights = _oof_roc_auc_weights(
+                pipelines,
+                fold_x_train,
+                fold_y_train,
+                inner_splits,
+                seed + fold_index,
             )
         else:
             fold_weights = {name: 1.0 / len(pipelines) for name in pipelines}
@@ -189,6 +197,8 @@ def train_disease(
         for name, values in fold_scores.items():
             ensemble_scores += fold_weights[name] * values
         fold_metrics["weighted_ensemble"].append(_metrics(fold_y_valid, ensemble_scores))
+        equal_scores = np.mean(np.column_stack(list(fold_scores.values())), axis=1)
+        fold_metrics["equal_weight_ensemble"].append(_metrics(fold_y_valid, equal_scores))
 
     rng = np.random.default_rng(seed)
     cv_results: dict[str, dict[str, Any]] = {}
@@ -208,27 +218,17 @@ def train_disease(
                 ],
                 "folds": float(len(values)),
             }
-    weights_raw = {
-        name: max(
-            0.0,
-            float(
-                cross_val_score(
-                    pipeline, x_train, y_train, cv=splits, scoring="roc_auc", n_jobs=1
-                ).mean()
-            ),
-        )
-        for name, pipeline in pipelines.items()
-    }
-    total = sum(weights_raw.values())
-    weights = (
-        {name: value / total for name, value in weights_raw.items()}
-        if total
-        else {name: 1.0 / len(pipelines) for name in pipelines}
-    )
+    weights = _oof_roc_auc_weights(pipelines, x_train, y_train, splits, seed)
+    equal_weights = {name: 1.0 / len(pipelines) for name in pipelines}
     for pipeline in pipelines.values():
         pipeline.fit(x_train, y_train)
     ensemble = WeightedProbabilityEnsemble(pipelines, weights)
-    models: dict[str, Any] = {**pipelines, "weighted_ensemble": ensemble}
+    equal_ensemble = WeightedProbabilityEnsemble(pipelines, equal_weights)
+    models: dict[str, Any] = {
+        **pipelines,
+        "equal_weight_ensemble": equal_ensemble,
+        "weighted_ensemble": ensemble,
+    }
     scores: dict[str, NDArray[np.float64]] = {
         name: np.asarray(model.predict_proba(x_test)[:, 1], dtype=float)
         for name, model in models.items()
@@ -236,7 +236,7 @@ def train_disease(
     metrics = {name: _metrics(y_test, prediction) for name, prediction in scores.items()}
     output = artifacts_dir / config.id
     output.mkdir(parents=True, exist_ok=True)
-    version = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    version = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     model_path = output / f"models_{version}.joblib"
     joblib.dump(
         {"models": models, "weights": weights, "features": list(config.feature_columns)}, model_path
@@ -245,6 +245,21 @@ def train_disease(
         "disease_id": config.id,
         "generated_at": datetime.now(UTC).isoformat(),
         "dataset_path": str(dataset_path),
+        "dataset_sha256": file_sha256(dataset_path),
+        "dataset_rows": int(len(frame)),
+        "train_rows": int(len(y_train)),
+        "test_rows": int(len(y_test)),
+        "experiment_label": "post_cleaning_v2",
+        "experiment_note": (
+            "New experiment on the verified, de-duplicated dataset; not comparable with "
+            "pre-cleaning metrics, which were computed on data containing duplicate rows."
+        ),
+        "leakage_safeguards": {
+            "duplicates_handled_before_split": True,
+            "preprocessing_fitted_on_training_rows_only": True,
+            "ensemble_weights_from_training_oof_only": True,
+            "test_set_used_only_for_final_metrics": True,
+        },
         "seed": seed,
         "test_size": test_size,
         "cv": {
@@ -254,17 +269,30 @@ def train_disease(
             "training_metrics": cv_results,
         },
         "holdout_metrics": metrics,
+        "equal_ensemble_weights": equal_weights,
         "ensemble_weights": weights,
         "model_artifact": model_path.name,
+        "model_version": version,
         "reliability_interpretation": (
             "Consistency under tested conditions only; not medical correctness."
         ),
     }
     metrics_path = output / f"evaluation_{version}.json"
     _write_plots(output, version, y_test, scores)
-    result["global_shap_artifacts"] = generate_global_explanations(
-        ensemble, x_train, output, seed=seed
-    )
+    global_shap_artifacts: dict[str, dict[str, str]] = {}
+    model_bundle = {"models": models, "weights": weights}
+    for model_name in models:
+        explanation_model, explanation_frame = encode_ensemble_inputs(
+            model_bundle, x_train, model_name
+        )
+        global_shap_artifacts[model_name] = generate_global_explanations(
+            explanation_model,
+            explanation_frame,
+            output,
+            seed=seed,
+            artifact_prefix=f"global_shap_{model_name}",
+        )
+    result["global_shap_artifacts"] = global_shap_artifacts
     metrics_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
 

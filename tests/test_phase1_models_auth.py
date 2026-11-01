@@ -37,6 +37,7 @@ def test_user_creation_hashes_password_and_only_allows_public_roles() -> None:
             "Researcher One",
             "secure-research-password",
             "researcher",
+            "researcher1",
         )
         assert user.email == "researcher@example.com"
         assert user.role == "researcher"
@@ -45,7 +46,9 @@ def test_user_creation_hashes_password_and_only_allows_public_roles() -> None:
         assert ROLES == {"admin", "researcher", "clinician"}
         assert PUBLIC_ROLES == {"researcher", "clinician"}
         with pytest.raises(ValueError, match="Public registration"):
-            register_user(db, "admin@example.com", "Admin", "secure-admin-password", "admin")
+            register_user(
+                db, "admin@example.com", "Admin", "secure-admin-password", "admin", "adminuser"
+            )
     finally:
         db.close()
         engine.dispose()
@@ -55,6 +58,7 @@ def test_phase_one_registry_and_audit_models_persist() -> None:
     db, engine = _session()
     try:
         user = User(
+            username="adminuser",
             email="admin@example.com",
             full_name="Admin User",
             password_hash=hash_password("secure-admin-password"),
@@ -106,6 +110,7 @@ def test_database_rejects_unknown_role() -> None:
     try:
         db.add(
             User(
+                username="invalid",
                 email="invalid@example.com",
                 full_name="Invalid Role",
                 password_hash=hash_password("secure-invalid-password"),

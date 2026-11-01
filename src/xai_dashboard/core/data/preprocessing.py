@@ -1,4 +1,4 @@
-"""Disease-configured preprocessing fitted only within model training pipelines."""
+"""Leakage-safe preprocessing pipelines for config-defined disease features."""
 
 from typing import Any
 
@@ -11,36 +11,32 @@ from xai_dashboard.core.data.diseases import DiseaseConfig
 
 
 def build_preprocessor(config: DiseaseConfig) -> ColumnTransformer:
-    """Build the numeric/categorical transform declared by a disease YAML config."""
+    """Build transformers; all imputers/scalers/encoders fit only during pipeline.fit."""
     transformers: list[tuple[str, Pipeline, list[str]]] = []
     if config.numeric_columns:
         numeric = Pipeline(
             [
-                ("imputer", SimpleImputer(strategy="median", keep_empty_features=True)),
-                ("scaler", StandardScaler()),
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scale", StandardScaler()),
             ]
         )
         transformers.append(("numeric", numeric, list(config.numeric_columns)))
     if config.categorical_columns:
         categorical = Pipeline(
             [
-                (
-                    "imputer",
-                    SimpleImputer(strategy="most_frequent", keep_empty_features=True),
-                ),
-                ("onehot", OneHotEncoder(handle_unknown="ignore")),
+                ("imputer", SimpleImputer(strategy="most_frequent")),
+                ("encode", OneHotEncoder(handle_unknown="ignore")),
             ]
         )
-        transformers.append(
-            ("categorical", categorical, list(config.categorical_columns))
-        )
-    if not transformers:
-        raise ValueError(f"Disease {config.id!r} must define at least one feature column")
-    return ColumnTransformer(transformers, remainder="drop")
+        transformers.append(("categorical", categorical, list(config.categorical_columns)))
+    return ColumnTransformer(transformers=transformers, remainder="drop")
 
 
-def build_model_pipeline(config: DiseaseConfig, estimator: Any) -> Pipeline:
-    """Compose preprocessing and estimator so transforms fit only on each train fold."""
+def build_pipeline(config: DiseaseConfig, estimator: Any) -> Pipeline:
+    """Put all learned preprocessing and estimator fitting inside one sklearn Pipeline."""
     return Pipeline(
-        [("preprocess", build_preprocessor(config)), ("model", estimator)]
+        [
+            ("preprocess", build_preprocessor(config)),
+            ("model", estimator),
+        ]
     )

@@ -55,8 +55,16 @@ class ApiClient:
     def post(self, path: str, payload: Any = None) -> Any:
         return self._request("POST", path, payload)
 
-    def login(self, email: str, password: str) -> Any:
-        return self._request("POST", "/auth/login", form={"username": email, "password": password})
+    def patch(self, path: str, payload: Any = None) -> Any:
+        return self._request("PATCH", path, payload)
+
+    def login(self, identifier: str, password: str) -> Any:
+        return self._request(
+            "POST", "/auth/login", form={"username": identifier, "password": password}
+        )
+
+    def logout(self) -> None:
+        self._request("POST", "/auth/logout")
 
     def download(self, path: str) -> bytes:
         headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}

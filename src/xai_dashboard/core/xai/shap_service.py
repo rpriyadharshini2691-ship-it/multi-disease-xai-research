@@ -42,6 +42,8 @@ def explain_instance(
         "base_value": base_value,
         "positive_class_score": score,
         "additivity_sum": total,
+        "additivity_error": total - score,
+        "additivity_tolerance": tolerance,
         "additivity_passed": True,
         "waterfall_png_base64": base64.b64encode(image.getvalue()).decode("ascii"),
         "features": [

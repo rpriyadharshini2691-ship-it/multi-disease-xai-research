@@ -13,7 +13,14 @@ if diseases:
     disease = st.selectbox("Disease module", diseases, format_func=lambda item: item["name"])
     st.caption("Research and education use only. Not a clinical device.")
     model_name = st.selectbox(
-        "Model", ["weighted_ensemble", "logistic_regression", "random_forest", "xgboost"]
+        "Model",
+        [
+            "weighted_ensemble",
+            "equal_weight_ensemble",
+            "logistic_regression",
+            "random_forest",
+            "xgboost",
+        ],
     )
     with st.form("prediction_form"):
         features = feature_form(disease, "predict")

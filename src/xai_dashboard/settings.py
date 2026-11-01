@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     secret_key: SecretStr = Field(default=SecretStr("development-only-change-before-deploy"))
     database_url: str = "sqlite:///./xai_dashboard.db"
     access_token_expire_minutes: int = 60
+    login_max_attempts: int = 5
+    login_window_seconds: int = 300
     artifacts_dir: Path = Path("artifacts")
     configs_dir: Path = Path("configs")
     api_base_url: str = "http://127.0.0.1:8000/api/v1"

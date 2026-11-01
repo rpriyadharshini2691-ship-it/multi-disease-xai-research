@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,11 +29,15 @@ class User(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(160))
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(
         String(20), default="researcher", server_default="researcher"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("1"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
@@ -43,6 +48,18 @@ class User(Base):
     registered_models: Mapped[list["ModelRegistry"]] = relationship(back_populates="creator")
     experiments: Mapped[list["ExperimentLog"]] = relationship(back_populates="user")
     reports: Mapped[list["ReportLog"]] = relationship(back_populates="user")
+
+
+class RevokedToken(Base):
+    """JWT IDs invalidated by logout; rows can be purged after expires_at."""
+
+    __tablename__ = "revoked_tokens"
+
+    jti: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    revoked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class PredictionLog(Base):
