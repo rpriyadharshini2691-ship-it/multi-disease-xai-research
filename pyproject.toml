@@ -24,7 +24,7 @@ dependencies = [
   "PyMySQL>=1.1,<2",
   "PyYAML>=6,<7",
   "reportlab>=4,<5",
-  "scikit-learn>=1.4,<2",
+  "scikit-learn==1.7.0",
   "scipy>=1.11,<2",
   "shap>=0.45,<1",
   "SQLAlchemy>=2,<3",

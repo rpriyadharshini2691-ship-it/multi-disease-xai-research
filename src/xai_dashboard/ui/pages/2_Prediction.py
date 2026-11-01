@@ -37,43 +37,25 @@ if diseases:
         features = feature_form(disease, "predict")
         consent = st.checkbox("I consent to storing this prediction score in my account activity")
         submitted = st.form_submit_button("Estimate model score", type="primary")
+    prediction_context = {
+        "disease_id": disease["id"],
+        "model_name": model_name,
+        "features": features,
+        "consent": consent,
+    }
+    prediction_result = None
     if submitted:
+        st.session_state.pop("last_prediction_result", None)
+        st.session_state.pop("last_prediction_context", None)
+        st.session_state.pop("last_prediction_report_request", None)
         try:
-            request_payload = {
-                "disease_id": disease["id"],
-                "features": features,
-                "model_name": model_name,
-                "consent": consent,
-            }
-            result = client.post("/predict", request_payload)
+            result = client.post("/predict", prediction_context)
+            st.session_state["last_prediction_result"] = result
+            st.session_state["last_prediction_context"] = prediction_context
             st.session_state["last_prediction_report_request"] = {
-                **request_payload,
+                **prediction_context,
                 "consent": False,
             }
-            show_score(result["positive_class_score"], result["disclaimer"])
-            st.caption(
-                "Score stored with your account."
-                if result["stored"]
-                else "This prediction was not stored."
-            )
-            st.caption(
-                f"Model: {result['model_name']} ({result['model_version']}) | "
-                f"Prediction reference: {result['prediction_reference']}"
-            )
-            if result["additivity_passed"]:
-                st.success("The SHAP explanation passed probability-score validation.")
-            else:
-                st.warning("The SHAP explanation is not validated for this prediction.")
-            st.subheader("Important feature contributions")
-            st.caption(
-                "Positive SHAP contributions increase the model-estimated positive-class score; "
-                "negative contributions decrease it. These explain model behavior, not causation."
-            )
-            st.dataframe(
-                result["important_features"],
-                use_container_width=True,
-                hide_index=True,
-            )
         except ApiError as exc:
             if exc.status_code == 422:
                 st.error(f"Input validation failed: {exc}")
@@ -81,6 +63,40 @@ if diseases:
                 st.info(f"Prediction unavailable: {exc}")
             else:
                 st.error(str(exc))
+    elif st.session_state.get("last_prediction_context") == prediction_context:
+        prediction_result = st.session_state.get("last_prediction_result")
+
+    if submitted and "last_prediction_result" in st.session_state:
+        prediction_result = st.session_state["last_prediction_result"]
+    if prediction_result:
+        st.subheader("Model estimate")
+        st.metric("Model prediction", str(prediction_result["predicted_class"]).title())
+        show_score(
+            prediction_result["positive_class_score"], prediction_result["disclaimer"]
+        )
+        st.caption(
+            "Score stored with your account."
+            if prediction_result["stored"]
+            else "This prediction was not stored."
+        )
+        st.caption(
+            f"Model: {prediction_result['model_name']} ({prediction_result['model_version']}) | "
+            f"Prediction reference: {prediction_result['prediction_reference']}"
+        )
+        if prediction_result["additivity_passed"]:
+            st.success("The SHAP explanation passed probability-score validation.")
+        else:
+            st.warning("The SHAP explanation is not validated for this prediction.")
+        st.subheader("Important feature contributions")
+        st.caption(
+            "Positive SHAP contributions increase the model-estimated positive-class score; "
+            "negative contributions decrease it. These explain model behavior, not causation."
+        )
+        st.dataframe(
+            prediction_result["important_features"],
+            use_container_width=True,
+            hide_index=True,
+        )
 
 if st.session_state.get("last_prediction_report_request"):
     if st.button("Generate prediction PDF"):

@@ -14,6 +14,7 @@ class FakePredictionClient:
     def post(self, _path: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.prediction_payload = payload
         return {
+            "predicted_class": "positive",
             "positive_class_score": 0.7,
             "disclaimer": "Research score only.",
             "stored": payload["consent"],
@@ -68,15 +69,25 @@ def test_prediction_page_requests_pdf_without_repeating_consent(
     submit = next(
         button for button in app.button if button.label == "Estimate model score"
     )
-    submit.click().run()
+    submit.click().run(timeout=10)
     assert not app.exception
+    assert any(
+        metric.label == "Model prediction" and metric.value == "Positive"
+        for metric in app.metric
+    )
     assert client.prediction_payload is not None
     assert client.prediction_payload["consent"] is False
     assert client.prediction_payload["features"]["gender"] == "Female"
 
-    next(button for button in app.button if button.label == "Generate prediction PDF").click().run()
+    next(button for button in app.button if button.label == "Generate prediction PDF").click().run(
+        timeout=10
+    )
 
     assert not app.exception
+    assert any(
+        metric.label == "Model prediction" and metric.value == "Positive"
+        for metric in app.metric
+    )
     assert client.report_payload is not None
     assert client.report_payload["consent"] is False
     assert len(app.get("download_button")) == 1
