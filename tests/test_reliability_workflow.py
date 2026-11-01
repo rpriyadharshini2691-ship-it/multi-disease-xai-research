@@ -6,6 +6,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import pytest
+from fastapi import HTTPException
 from pydantic import ValidationError
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -114,6 +115,21 @@ def test_reliability_job_requires_thirty_repetitions_and_queues_valid_request(
     )
     assert response == {"job_id": "job-id", "status": "queued"}
     assert queued["kind"] == "reliability"
+
+
+def test_job_dataset_path_override_cannot_read_outside_workspace_data(tmp_path: Path) -> None:
+    configs_dir = Path("configs").resolve()
+    configured = jobs._resolve_dataset_path(
+        "data/processed/diabetes.csv", None, configs_dir
+    )
+    assert configured.is_file()
+
+    with pytest.raises(HTTPException) as error:
+        jobs._resolve_dataset_path(
+            "data/processed/diabetes.csv", tmp_path / "private.csv", configs_dir
+        )
+    assert error.value.status_code == 422
+    assert error.value.detail["code"] == "dataset_path_not_allowed"
 
 
 def test_runner_executes_all_configurations_and_persists_genuine_shape(

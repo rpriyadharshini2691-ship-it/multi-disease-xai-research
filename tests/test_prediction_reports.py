@@ -96,6 +96,22 @@ def test_prediction_inputs_accept_configured_categories(disease_id: str) -> None
     assert len(validated) == 1
 
 
+def test_registration_rejects_bcrypt_overlength_passwords() -> None:
+    from pydantic import ValidationError
+
+    from xai_dashboard.api.schemas import RegisterRequest
+
+    with pytest.raises(ValidationError, match="72 UTF-8 bytes"):
+        RegisterRequest(
+            username="longpass",
+            email="longpass@example.org",
+            full_name="Long Password",
+            password="x" * 73,
+        )
+    with pytest.raises(ValueError, match="72 UTF-8 bytes"):
+        hash_password("x" * 73)
+
+
 @pytest.mark.parametrize("disease_id", ["diabetes", "heart", "ckd"])
 def test_prediction_inputs_reject_unknown_categories(disease_id: str) -> None:
     config = load_disease_config(Path("configs") / f"{disease_id}.yaml")

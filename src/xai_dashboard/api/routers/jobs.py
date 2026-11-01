@@ -27,6 +27,40 @@ class ReliabilityRequest(BaseModel):
     sample_size: int = Field(default=8, ge=2)
 
 
+def _resolve_dataset_path(
+    configured_path: str, requested_path: Path | None, configs_dir: Path
+) -> Path:
+    project_root = configs_dir.resolve().parent
+    configured = Path(configured_path)
+    if not configured.is_absolute():
+        configured = project_root / configured
+    candidate = requested_path or configured
+    if not candidate.is_absolute():
+        candidate = project_root / candidate
+    resolved = candidate.resolve()
+    allowed_root = (project_root / "data").resolve()
+    if resolved != configured.resolve() and not resolved.is_relative_to(allowed_root):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "dataset_path_not_allowed",
+                "message": (
+                    "Dataset paths must use the configured source or a file under the "
+                    "workspace data directory."
+                ),
+            },
+        )
+    if not resolved.is_file():
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "dataset_missing",
+                "message": "Provide an existing local dataset under the workspace data directory.",
+            },
+        )
+    return resolved
+
+
 @router.post("/train/{disease_id}", status_code=202)
 def start_training(
     disease_id: str,
@@ -40,15 +74,7 @@ def start_training(
             status_code=404,
             detail={"code": "unknown_disease", "message": "Disease configuration was not found."},
         )
-    dataset = payload.dataset_path or Path(config.dataset_path)
-    if not dataset.exists():
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "dataset_missing",
-                "message": "Provide a local dataset file before training.",
-            },
-        )
+    dataset = _resolve_dataset_path(config.dataset_path, payload.dataset_path, settings.configs_dir)
     job_id = submit_job(
         "training",
         lambda: train_and_register_models(
@@ -85,15 +111,7 @@ def start_reliability(
             status_code=404,
             detail={"code": "unknown_disease", "message": "Disease configuration was not found."},
         )
-    dataset = payload.dataset_path or Path(config.dataset_path)
-    if not dataset.exists():
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "dataset_missing",
-                "message": "Provide a local dataset file before running reliability experiments.",
-            },
-        )
+    dataset = _resolve_dataset_path(config.dataset_path, payload.dataset_path, settings.configs_dir)
     job_id = submit_job(
         "reliability",
         lambda: run_and_record_reliability(

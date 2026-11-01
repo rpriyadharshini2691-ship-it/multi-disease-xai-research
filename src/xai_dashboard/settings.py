@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     def validate_deployment_secret(self) -> None:
         if (
-            self.environment.lower() == "production"
+            self.environment.strip().lower() in {"prod", "production"}
             and (
                 self.secret_key.get_secret_value() == "development-only-change-before-deploy"
                 or len(self.secret_key.get_secret_value()) < 32

@@ -357,3 +357,8 @@ def test_production_rejects_default_or_short_secret() -> None:
     with pytest.raises(ValueError, match="SECRET_KEY"):
         Settings(environment="production", secret_key="short").validate_deployment_secret()
     Settings(environment="production", secret_key="x" * 40).validate_deployment_secret()
+    with pytest.raises(ValueError, match="SECRET_KEY"):
+        Settings(
+            environment="prod",
+            secret_key="development-only-change-before-deploy",
+        ).validate_deployment_secret()

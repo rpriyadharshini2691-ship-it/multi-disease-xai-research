@@ -18,6 +18,7 @@ from xai_dashboard.core.ml.registry import ModelRegistry
 from xai_dashboard.core.xai.ensemble import encode_ensemble_inputs
 from xai_dashboard.core.xai.shap_service import explain_instance
 from xai_dashboard.db.models import User
+from xai_dashboard.services.prediction import PredictionInputError, validate_prediction_features
 from xai_dashboard.settings import Settings, get_settings
 
 router = APIRouter(prefix="/explain", tags=["explainability"])
@@ -48,14 +49,6 @@ def explain_local(
             status_code=404,
             detail={"code": "unknown_disease", "message": "Disease configuration was not found."},
         )
-    if set(payload.features) != set(config.feature_columns):
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "invalid_features",
-                "message": "Feature names must match the disease configuration.",
-            },
-        )
     artifact = registry.load_latest(disease_id)
     dataset = Path(config.dataset_path)
     evaluation_files = sorted((settings.artifacts_dir / disease_id).glob("evaluation_*.json"))
@@ -67,12 +60,23 @@ def explain_local(
                 "message": "A model, evaluation artifact, and background dataset are required.",
             },
         )
-    frame = pd.DataFrame(
-        [{name: payload.features[name] for name in config.feature_columns}],
-        columns=config.feature_columns,
-    )
-    evaluation = json.loads(evaluation_files[-1].read_text(encoding="utf-8"))
-    source = load_dataset(config, dataset)
+    try:
+        source = load_dataset(config, dataset)
+        frame = validate_prediction_features(config, payload.features, source)
+        evaluation = json.loads(evaluation_files[-1].read_text(encoding="utf-8"))
+    except PredictionInputError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+    except (OSError, ValueError, KeyError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "explanation_not_generated",
+                "message": "A valid dataset and evaluation artifact are required.",
+            },
+        ) from exc
     split = stratified_split(
         source,
         config,

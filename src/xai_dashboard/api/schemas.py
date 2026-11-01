@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictBool
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictBool, field_validator
 
 SCORE_DISCLAIMER = (
     "This is a model-estimated positive-class score, not a clinical probability or diagnosis. "
@@ -25,6 +25,13 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=1, max_length=160)
     password: str = Field(min_length=10, max_length=128)
     role: Literal["researcher", "clinician"] = "researcher"
+
+    @field_validator("password")
+    @classmethod
+    def password_fits_bcrypt_input_limit(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must not exceed 72 UTF-8 bytes")
+        return value
 
 
 class UserProfile(BaseModel):

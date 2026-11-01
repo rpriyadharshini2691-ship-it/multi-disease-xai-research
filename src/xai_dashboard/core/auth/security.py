@@ -17,7 +17,10 @@ TOKEN_ALGORITHM = "HS256"
 def hash_password(password: str) -> str:
     if len(password) < 10:
         raise ValueError("Password must contain at least 10 characters")
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    encoded = password.encode("utf-8")
+    if len(encoded) > 72:
+        raise ValueError("Password must not exceed 72 UTF-8 bytes")
+    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
