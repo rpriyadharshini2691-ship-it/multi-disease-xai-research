@@ -1,9 +1,22 @@
 id: heart
 name: Heart Disease
-# Dataset is user-provided; see docs/datasets.md. No raw data is bundled.
-dataset_path: data/heart.csv
+raw_dataset_path: data/heart.csv
+dataset_path: data/processed/heart.csv
+source:
+  name: Heart Disease (Cleveland subset)
+  uci_id: 45
+  url: https://archive.ics.uci.edu/dataset/45/heart+disease
+  doi: 10.24432/C52P4X
+  original_target: "num (0 = no disease, 1-4 = disease present)"
+  license: CC BY 4.0
 target_column: target
 positive_label: 1
+target_mapping:
+  type: positive_if_greater_than
+  threshold: 0
+drop_missing_target: true
+duplicate_policy: keep
+duplicate_rationale: No exact duplicate rows exist in the Cleveland data.
 numeric_columns: [age, trestbps, chol, thalach, oldpeak]
 categorical_columns: [sex, cp, fbs, restecg, exang, slope, ca, thal]
 binary_columns: [sex, fbs, exang]

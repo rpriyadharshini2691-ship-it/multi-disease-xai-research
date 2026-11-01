@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install test lint format typecheck api ui migrate
+.PHONY: install test lint format typecheck api ui migrate profile train
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
 
@@ -24,3 +24,9 @@ ui:
 
 migrate:
 	alembic upgrade head
+
+profile:
+	$(PYTHON) scripts/profile_data.py
+
+train:
+	$(PYTHON) scripts/train_all.py

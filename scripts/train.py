@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from xai_dashboard.core.data.diseases import load_disease_config
-from xai_dashboard.core.ml.training import train_disease
+from xai_dashboard.services.training import print_training_summary, train_and_register_models
 
 
 def main() -> None:
@@ -16,8 +16,8 @@ def main() -> None:
     args = parser.parse_args()
     config = load_disease_config(args.configs / f"{args.disease}.yaml")
     dataset = args.data or Path(config.dataset_path)
-    result = train_disease(config, dataset, args.artifacts)
-    print(f"Evaluation written for {config.name}: {result['model_artifact']}")
+    result = train_and_register_models(config, dataset, args.artifacts)
+    print_training_summary(result)
 
 
 if __name__ == "__main__":

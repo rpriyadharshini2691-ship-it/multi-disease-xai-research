@@ -1,0 +1,105 @@
+{
+  "disease_id": "heart",
+  "dataset_name": "Heart Disease",
+  "generated_at": "2026-11-01T08:37:28.681455+00:00",
+  "source": {
+    "name": "Heart Disease (Cleveland subset)",
+    "uci_id": 45,
+    "url": "https://archive.ics.uci.edu/dataset/45/heart+disease",
+    "doi": "10.24432/C52P4X",
+    "original_target": "num (0 = no disease, 1-4 = disease present)",
+    "license": "CC BY 4.0"
+  },
+  "raw_file": "C:/Drives/Priya/3rd_Sem_Project/multi-disease-xai-research/data/heart.csv",
+  "raw_sha256": "2c47d9ee8b2e0d30e81c113a079baec0bb3814b1cef093e675610de45df54ffc",
+  "original_rows": 303,
+  "original_columns": 14,
+  "original_duplicate_rows": 0,
+  "original_missing_cells": 6,
+  "original_missing_by_column": {
+    "ca": 4,
+    "thal": 2
+  },
+  "target_column": "target",
+  "target_labels_before_mapping": {
+    "0": 164,
+    "1": 139
+  },
+  "target_labels_after_mapping": {
+    "0": 164,
+    "1": 139
+  },
+  "class_distribution_before_cleaning": {
+    "0": 164,
+    "1": 139
+  },
+  "class_distribution_final": {
+    "0": 164,
+    "1": 139
+  },
+  "duplicate_analysis": {
+    "exact_duplicate_rows": 0,
+    "distinct_rows": 303,
+    "feature_groups_with_repeats": 0,
+    "largest_repeat_group": 1,
+    "feature_groups_with_conflicting_labels": 0,
+    "policy": "keep",
+    "rationale": "No exact duplicate rows exist in the Cleveland data."
+  },
+  "cleaning_operations": [
+    {
+      "operation": "map_target",
+      "detail": {
+        "type": "positive_if_greater_than",
+        "rule": "value > 0 -> 1, otherwise 0"
+      },
+      "labels_before": {
+        "0": 164,
+        "1": 139
+      },
+      "labels_after": {
+        "0": 164,
+        "1": 139
+      }
+    },
+    {
+      "operation": "drop_rows_with_missing_target",
+      "rows_affected": 0,
+      "detail": "Missing targets are never imputed; rows are dropped before training."
+    },
+    {
+      "operation": "duplicate_handling",
+      "rows_affected": 0,
+      "detail": {
+        "exact_duplicate_rows": 0,
+        "distinct_rows": 303,
+        "feature_groups_with_repeats": 0,
+        "largest_repeat_group": 1,
+        "feature_groups_with_conflicting_labels": 0,
+        "policy": "keep",
+        "rationale": "No exact duplicate rows exist in the Cleveland data."
+      }
+    }
+  ],
+  "final_rows": 303,
+  "final_columns": 14,
+  "final_feature_count": 13,
+  "final_missing_cells": 6,
+  "missing_values_note": "Remaining missing feature values are imputed inside the sklearn pipelines, fitted on training rows only.",
+  "verification": {
+    "status": "verified",
+    "reference": "UCI 45 processed.cleveland.data (Cleveland subset only)",
+    "reference_rows": 303,
+    "reference_raw_target_distribution": {
+      "0": 164,
+      "1": 55,
+      "2": 36,
+      "3": 35,
+      "4": 13
+    },
+    "rows_identical_after_mapping_num_gt_0_to_1": true,
+    "note": "The local file already stores the binary target; the 0-4 mapping is reproduced from the official raw file. Verification is by cell-level comparison, not row count."
+  },
+  "processed_file": "C:/Drives/Priya/3rd_Sem_Project/multi-disease-xai-research/data/processed/heart.csv",
+  "processed_sha256": "2c47d9ee8b2e0d30e81c113a079baec0bb3814b1cef093e675610de45df54ffc"
+}

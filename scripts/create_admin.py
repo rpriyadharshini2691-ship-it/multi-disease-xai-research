@@ -2,26 +2,21 @@
 
 from getpass import getpass
 
-from sqlalchemy import select
-
-from xai_dashboard.core.auth.security import hash_password
-from xai_dashboard.db.models import User
 from xai_dashboard.db.session import Base, SessionLocal, engine
+from xai_dashboard.services.auth import AccountError, register_user
 
 
 def main() -> None:
     Base.metadata.create_all(bind=engine)
     email = input("Admin email: ").strip().lower()
+    username = input("Admin username: ").strip().lower()
     full_name = input("Admin full name: ").strip()
     password = getpass("Admin password (10+ characters): ")
     with SessionLocal() as db:
-        if db.scalar(select(User).where(User.email == email)):
-            raise SystemExit("An account with that email already exists.")
-        user = User(
-            email=email, full_name=full_name, password_hash=hash_password(password), role="admin"
-        )
-        db.add(user)
-        db.commit()
+        try:
+            register_user(db, email, full_name, password, "admin", username, allow_admin=True)
+        except (AccountError, ValueError) as exc:
+            raise SystemExit(str(exc)) from exc
     print("Administrator account created.")
 
 

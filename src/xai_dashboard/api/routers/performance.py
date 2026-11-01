@@ -36,12 +36,15 @@ def performance(disease_id: str, settings: Settings = Depends(get_settings)) -> 
             "disease_id": disease_id,
             "message": "Evaluation artifacts are not yet generated.",
         }
+    plot_files = sorted(
+        [*directory.glob("model_comparison_*.png"), *directory.glob("evaluation_*.png")]
+    )
     plots = [
         {
             "filename": image.name,
             "png_base64": base64.b64encode(image.read_bytes()).decode("ascii"),
         }
-        for image in sorted(directory.glob("*.png"))
+        for image in plot_files
     ]
     return {
         "status": "ready",

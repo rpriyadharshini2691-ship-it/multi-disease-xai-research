@@ -1,32 +1,49 @@
 id: diabetes
 name: Diabetes
-# Dataset is user-provided; see docs/datasets.md. No raw data is bundled.
-dataset_path: data/diabetes.csv
-target_column: Outcome
+# Raw file is preserved untouched; training reads the cleaned copy from data/processed.
+raw_dataset_path: data/diabetes.csv
+dataset_path: data/processed/diabetes.csv
+source:
+  name: Early Stage Diabetes Risk Prediction Dataset
+  uci_id: 529
+  url: https://archive.ics.uci.edu/dataset/529/early+stage+diabetes+risk+prediction+dataset
+  doi: 10.24432/C5VG8H
+  original_target: "class (Positive / Negative)"
+  license: CC BY 4.0
+target_column: target
 positive_label: 1
-numeric_columns: [Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age]
-categorical_columns: []
-binary_columns: []
+target_mapping:
+  type: label_map
+  labels: {Positive: 1, Negative: 0}
+drop_missing_target: true
+duplicate_policy: drop_exact
+duplicate_rationale: >-
+  The official UCI file itself contains 269 exact repeats (251 distinct rows), no identical
+  feature vector has conflicting labels, and repeats are scattered rather than adjacent, so
+  they cannot be proven accidental or genuine. Exact copies would otherwise fall on both
+  sides of a train/test split and inflate hold-out metrics, so exact duplicates are removed
+  before splitting. The raw file is kept unchanged.
+numeric_columns: [age]
+categorical_columns: [gender, polyuria, polydipsia, sudden_weight_loss, weakness, polyphagia, genital_thrush, visual_blurring, itching, irritability, delayed_healing, partial_paresis, muscle_stiffness, alopecia, obesity]
+binary_columns: [polyuria, polydipsia, sudden_weight_loss, weakness, polyphagia, genital_thrush, visual_blurring, itching, irritability, delayed_healing, partial_paresis, muscle_stiffness, alopecia, obesity]
 display_names:
-  Pregnancies: Pregnancies
-  Glucose: Glucose
-  BloodPressure: Blood pressure
-  SkinThickness: Skin thickness
-  Insulin: Insulin
-  BMI: Body mass index
-  DiabetesPedigreeFunction: Diabetes pedigree function
-  Age: Age
+  age: Age
+  gender: Gender
+  polyuria: Polyuria
+  polydipsia: Polydipsia
+  sudden_weight_loss: Sudden weight loss
+  weakness: Weakness
+  polyphagia: Polyphagia
+  genital_thrush: Genital thrush
+  visual_blurring: Visual blurring
+  itching: Itching
+  irritability: Irritability
+  delayed_healing: Delayed healing
+  partial_paresis: Partial paresis
+  muscle_stiffness: Muscle stiffness
+  alopecia: Alopecia
+  obesity: Obesity
 units:
-  Glucose: mg/dL
-  BloodPressure: mmHg
-  BMI: kg/m^2
-  Age: years
+  age: years
 valid_ranges:
-  Pregnancies: [0, 20]
-  Glucose: [0, 400]
-  BloodPressure: [0, 250]
-  SkinThickness: [0, 120]
-  Insulin: [0, 1000]
-  BMI: [0, 100]
-  DiabetesPedigreeFunction: [0, 3]
-  Age: [1, 120]
+  age: [1, 120]

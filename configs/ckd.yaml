@@ -1,10 +1,23 @@
 id: ckd
 name: Chronic Kidney Disease
-# Dataset is user-provided; see docs/datasets.md. No raw data is bundled.
-dataset_path: data/ckd.csv
-target_column: classification
-positive_label: ckd
-numeric_columns: [age, bp, bgr, bu, sc, sod, pot, hemo, pcv, wc, rc]
+raw_dataset_path: data/ckd.csv
+dataset_path: data/processed/ckd.csv
+source:
+  name: Chronic Kidney Disease
+  uci_id: 336
+  url: https://archive.ics.uci.edu/dataset/336/chronic+kidney+disease
+  doi: 10.24432/C5G020
+  original_target: "class (ckd / notckd)"
+  license: CC BY 4.0
+target_column: target
+positive_label: 1
+target_mapping:
+  type: label_map
+  labels: {ckd: 1, notckd: 0}
+drop_missing_target: true
+duplicate_policy: keep
+duplicate_rationale: No exact duplicate rows exist in the CKD data.
+numeric_columns: [age, bp, bgr, bu, sc, sod, pot, hemo, pcv, wbcc, rbcc]
 categorical_columns: [sg, al, su, rbc, pc, pcc, ba, htn, dm, cad, appet, pe, ane]
 binary_columns: [rbc, pc, pcc, ba, htn, dm, cad, pe, ane]
 display_names:
@@ -17,8 +30,8 @@ display_names:
   pot: Potassium
   hemo: Hemoglobin
   pcv: Packed cell volume
-  wc: White blood cell count
-  rc: Red blood cell count
+  wbcc: White blood cell count
+  rbcc: Red blood cell count
 units:
   age: years
   bp: mmHg
@@ -38,5 +51,5 @@ valid_ranges:
   pot: [1, 20]
   hemo: [0, 30]
   pcv: [1, 100]
-  wc: [100, 100000]
-  rc: [0, 20]
+  wbcc: [100, 100000]
+  rbcc: [0, 20]

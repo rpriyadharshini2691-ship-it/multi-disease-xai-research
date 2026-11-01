@@ -39,6 +39,8 @@ class JsonFormatter(logging.Formatter):
         for field in ("request_id", "path", "method", "status"):
             if hasattr(record, field):
                 entry[field] = getattr(record, field)
+        if record.exc_info:
+            entry["exception"] = self.formatException(record.exc_info)
         return json.dumps(entry)
 
 
@@ -97,9 +99,17 @@ async def http_error_handler(_request: Request, exc: StarletteHTTPException) -> 
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    details = [
+        {
+            key: error[key]
+            for key in ("loc", "msg", "type")
+            if key in error
+        }
+        for error in exc.errors()
+    ]
     return JSONResponse(
         status_code=422,
-        content=error_payload("validation_error", "Request validation failed.", exc.errors()),
+        content=error_payload("validation_error", "Request validation failed.", details),
     )
 
 

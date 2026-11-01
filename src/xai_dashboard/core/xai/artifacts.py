@@ -19,6 +19,7 @@ def generate_global_explanations(
     output_dir: Path,
     seed: int = 42,
     sample_size: int = 30,
+    artifact_prefix: str = "global_shap",
 ) -> dict[str, str]:
     """Explain the probability-space positive score using a reproducible training sample."""
     if training_frame.empty:
@@ -37,13 +38,13 @@ def generate_global_explanations(
     table = pd.DataFrame(
         {"feature": list(training_frame.columns), "mean_abs_shap": importance}
     ).sort_values("mean_abs_shap", ascending=False)
-    table_path = output_dir / "global_shap_importance.csv"
+    table_path = output_dir / f"{artifact_prefix}_importance.csv"
     table.to_csv(table_path, index=False)
 
     shap.plots.beeswarm(
         explanation, max_display=min(20, len(training_frame.columns)), show=False
     )
-    plot_path = output_dir / "global_shap_beeswarm.png"
+    plot_path = output_dir / f"{artifact_prefix}_beeswarm.png"
     plt.gcf().tight_layout()
     plt.gcf().savefig(plot_path, dpi=160, bbox_inches="tight")
     plt.close(plt.gcf())
