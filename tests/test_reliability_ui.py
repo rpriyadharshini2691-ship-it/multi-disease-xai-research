@@ -25,9 +25,39 @@ def _app_path() -> Path:
 
 
 def _ready_artifact() -> dict[str, Any]:
+    models = [
+        "logistic_regression",
+        "random_forest",
+        "xgboost",
+        "equal_weight_ensemble",
+        "weighted_ensemble",
+    ]
+    summary = [
+        {
+            "model_name": model,
+            "perturbation_level": 0.05,
+            "spearman": {
+                "mean": 0.9,
+                "sd": 0.05,
+                "n_repetitions": 30,
+                "confidence_interval_95": [0.85, 0.95],
+            },
+            "top5_jaccard": {
+                "mean": 0.8,
+                "sd": 0.1,
+                "n_repetitions": 30,
+                "confidence_interval_95": [0.7, 0.9],
+            },
+            "additivity_abs_error": {"mean": 1e-8, "sd": 1e-8},
+            "sample_comparisons": 240,
+            "additivity_passed": 240,
+            "additivity_failed": 0,
+        }
+        for model in models
+    ]
     return {
         "schema_version": 2,
-        "model_configurations": ["logistic_regression"],
+        "model_configurations": models,
         "experiment_config": {
             "sample_size_evaluated": 8,
             "heldout_test_rows": 20,
@@ -35,18 +65,7 @@ def _ready_artifact() -> dict[str, Any]:
             "random_seeds": [42, 123, 2026, 2027],
             "perturbation_levels": [0.05],
         },
-        "summary": [
-            {
-                "model_name": "logistic_regression",
-                "perturbation_level": 0.05,
-                "spearman": {"mean": 0.9, "sd": 0.05, "n_repetitions": 30},
-                "top5_jaccard": {"mean": 0.8, "sd": 0.1, "n_repetitions": 30},
-                "additivity_abs_error": {"mean": 1e-8, "sd": 1e-8},
-                "sample_comparisons": 240,
-                "additivity_passed": 240,
-                "additivity_failed": 0,
-            }
-        ],
+        "summary": summary,
         "sample_results": [
             {
                 "model_name": "logistic_regression",
@@ -63,6 +82,53 @@ def _ready_artifact() -> dict[str, Any]:
                 "additivity_passed": True,
             }
         ],
+        "global_stability": [
+            {
+                "model_name": "logistic_regression",
+                "perturbation_level": 0.05,
+                "spearman": {"mean": 0.95, "sd": 0.02, "n_repetitions": 30},
+                "baseline_feature_importance": [
+                    {"feature": "age", "mean_abs_shap": 0.3},
+                    {"feature": "sex", "mean_abs_shap": 0.2},
+                ],
+                "perturbed_feature_importance": [
+                    {"feature": "age", "mean_abs_shap": 0.28},
+                    {"feature": "sex", "mean_abs_shap": 0.22},
+                ],
+            }
+        ],
+        "shap_vs_permutation": [
+            {
+                "model_name": "logistic_regression",
+                "spearman_rho": 0.8,
+                "features": ["age", "sex"],
+                "shap_mean_abs": [0.3, 0.2],
+                "permutation_mean": [0.25, 0.1],
+                "permutation_sd": [0.02, 0.01],
+                "evaluation_rows": 8,
+                "permutation_repetitions": 30,
+                "seed": 42,
+                "feature_representation": "original features",
+            }
+        ],
+        "additivity_summary": [
+            {
+                "model_name": "equal_weight_ensemble",
+                "is_ensemble": True,
+                "score_space": "positive_class_probability",
+                "passed": 728,
+                "failed": 0,
+                "max_abs_error": 1e-8,
+            },
+            {
+                "model_name": "weighted_ensemble",
+                "is_ensemble": True,
+                "score_space": "positive_class_probability",
+                "passed": 728,
+                "failed": 0,
+                "max_abs_error": 1e-8,
+            },
+        ],
         "visualizations": {},
         "warnings": [],
     }
@@ -74,7 +140,11 @@ def _run_page(monkeypatch, response: dict[str, Any], tmp_path: Path) -> AppTest:
     monkeypatch.setattr(
         components,
         "load_diseases",
-        lambda _client: [{"id": "diabetes", "name": "Diabetes"}],
+        lambda _client: [
+            {"id": "diabetes", "name": "Diabetes"},
+            {"id": "heart", "name": "Heart Disease"},
+            {"id": "ckd", "name": "CKD"},
+        ],
     )
     monkeypatch.setattr(
         "xai_dashboard.settings.get_settings",
@@ -94,6 +164,11 @@ def test_reliability_page_renders_metrics_and_named_feature_comparison(
 ) -> None:
     app = _run_page(monkeypatch, {"status": "ready", "artifact": _ready_artifact()}, tmp_path)
     assert not app.exception
-    assert len(app.metric) == 3
+    assert len(app.metric) == 4
+    assert len(app.dataframe) >= 7
     assert any("Common features: age, sex" in element.value for element in app.markdown)
     assert any("Seed: 42" in element.value for element in app.markdown)
+    assert any("Global explanation stability" in element.value for element in app.subheader)
+    assert any("SHAP versus permutation importance" in element.value for element in app.subheader)
+    assert any("Ensemble additivity validation" in element.value for element in app.subheader)
+    assert any("Disease-wise stability" in element.value for element in app.subheader)

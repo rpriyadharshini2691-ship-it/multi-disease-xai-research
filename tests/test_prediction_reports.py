@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from xai_dashboard.api import deps, main
 from xai_dashboard.api.routers import predictions as prediction_router
+from xai_dashboard.api.routers.diseases import list_diseases
 from xai_dashboard.core.auth.security import create_access_token, hash_password
 from xai_dashboard.core.data.diseases import DiseaseConfig, load_disease_config
 from xai_dashboard.core.data.preprocessing import build_pipeline
@@ -28,6 +29,20 @@ from xai_dashboard.services.prediction import (
 from xai_dashboard.settings import Settings
 
 SECRET = "phase-four-test-secret-key-at-least-thirty-two-characters"
+
+
+def test_disease_metadata_returns_verified_categorical_options() -> None:
+    modules = list_diseases(Settings(configs_dir=Path("configs").resolve()))
+    diabetes = next(module for module in modules if module["id"] == "diabetes")
+    gender = next(feature for feature in diabetes["features"] if feature["id"] == "gender")
+    assert gender["options"] == ["Female", "Male"]
+
+
+def test_disease_metadata_exposes_processed_categorical_options() -> None:
+    result = list_diseases(Settings(configs_dir=Path("configs").resolve()))
+    diabetes = next(item for item in result if item["id"] == "diabetes")
+    gender = next(feature for feature in diabetes["features"] if feature["id"] == "gender")
+    assert gender["options"] == ["Female", "Male"]
 
 
 def _features(config: DiseaseConfig) -> dict[str, Any]:

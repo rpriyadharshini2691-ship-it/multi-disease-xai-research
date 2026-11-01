@@ -8,10 +8,21 @@ from xai_dashboard.ui.components import feature_form, load_diseases, require_log
 st.set_page_config(page_title="Prediction", layout="wide")
 client, _user = require_login()
 st.title("Prediction")
+st.caption(
+    "Choose one disease module and complete its configured inputs. Results are research "
+    "estimates, not medical diagnoses or treatment recommendations."
+)
 diseases = load_diseases(client)
 if diseases:
-    disease = st.selectbox("Disease module", diseases, format_func=lambda item: item["name"])
-    st.caption("Research and education use only. Not a clinical device.")
+    selected_id = st.query_params.get("disease")
+    disease_ids = [item["id"] for item in diseases]
+    selected_index = disease_ids.index(selected_id) if selected_id in disease_ids else 0
+    disease = st.selectbox(
+        "Disease module",
+        diseases,
+        index=selected_index,
+        format_func=lambda item: item["name"],
+    )
     model_name = st.selectbox(
         "Model",
         [
@@ -22,10 +33,10 @@ if diseases:
             "xgboost",
         ],
     )
-    with st.form("prediction_form"):
+    with st.form(f"prediction_form_{disease['id']}"):
         features = feature_form(disease, "predict")
         consent = st.checkbox("I consent to storing this prediction score in my account activity")
-        submitted = st.form_submit_button("Estimate positive-class score", type="primary")
+        submitted = st.form_submit_button("Estimate model score", type="primary")
     if submitted:
         try:
             request_payload = {
@@ -53,13 +64,23 @@ if diseases:
                 st.success("The SHAP explanation passed probability-score validation.")
             else:
                 st.warning("The SHAP explanation is not validated for this prediction.")
+            st.subheader("Important feature contributions")
+            st.caption(
+                "Positive SHAP contributions increase the model-estimated positive-class score; "
+                "negative contributions decrease it. These explain model behavior, not causation."
+            )
             st.dataframe(
                 result["important_features"],
                 use_container_width=True,
                 hide_index=True,
             )
         except ApiError as exc:
-            st.error(str(exc))
+            if exc.status_code == 422:
+                st.error(f"Input validation failed: {exc}")
+            elif exc.status_code >= 500:
+                st.info(f"Prediction unavailable: {exc}")
+            else:
+                st.error(str(exc))
 
 if st.session_state.get("last_prediction_report_request"):
     if st.button("Generate prediction PDF"):

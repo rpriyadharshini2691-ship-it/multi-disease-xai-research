@@ -51,7 +51,13 @@ def test_prediction_page_requests_pdf_without_repeating_consent(
                         "name": "Age",
                         "kind": "numeric",
                         "valid_range": [1, 120],
-                    }
+                    },
+                    {
+                        "id": "gender",
+                        "name": "Gender",
+                        "kind": "categorical",
+                        "options": ["Female", "Male"],
+                    },
                 ],
             }
         ],
@@ -60,12 +66,13 @@ def test_prediction_page_requests_pdf_without_repeating_consent(
     app = AppTest.from_file(str(page)).run()
     app.number_input[0].set_value(50)
     submit = next(
-        button for button in app.button if button.label == "Estimate positive-class score"
+        button for button in app.button if button.label == "Estimate model score"
     )
     submit.click().run()
     assert not app.exception
     assert client.prediction_payload is not None
     assert client.prediction_payload["consent"] is False
+    assert client.prediction_payload["features"]["gender"] == "Female"
 
     next(button for button in app.button if button.label == "Generate prediction PDF").click().run()
 
