@@ -50,7 +50,7 @@ if diseases:
             comparison = pd.DataFrame(holdout).T.rename(columns=metric_labels)
             comparison.index.name = "Model configuration"
             st.subheader("Held-out test comparison")
-            st.dataframe(comparison, use_container_width=True)
+            st.dataframe(comparison, width="stretch")
             eligible = [
                 (name, values)
                 for name, values in holdout.items()
@@ -90,7 +90,7 @@ if diseases:
                                 "Folds": statistics.get("folds"),
                             }
                         )
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
                 st.caption(
                     f"{cv_artifact.get('repeats', 'n/a')} repeats × "
                     f"{cv_artifact.get('splits', 'n/a')} folds; "

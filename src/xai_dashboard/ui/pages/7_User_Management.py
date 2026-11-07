@@ -23,7 +23,7 @@ if user["role"] == "admin":
     try:
         users = client.get("/users")
         table = pd.DataFrame(users).drop(columns=["activity"], errors="ignore")
-        st.dataframe(table, use_container_width=True, hide_index=True)
+        st.dataframe(table, width="stretch", hide_index=True)
         st.subheader("Manage an account")
         labels = {f"{u['username']} ({u['email']})": u for u in users}
         chosen = labels[st.selectbox("User", list(labels))]

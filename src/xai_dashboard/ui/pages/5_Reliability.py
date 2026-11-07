@@ -166,14 +166,14 @@ if diseases:
                     st.write("Original top five")
                     st.dataframe(
                         pd.DataFrame({"Feature": detail["original_top5_features"]}),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 with feature_columns[1]:
                     st.write("Perturbed top five")
                     st.dataframe(
                         pd.DataFrame({"Feature": detail["perturbed_top5_features"]}),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 st.write(f"Common features: {', '.join(detail['common_top5_features']) or 'none'}")
@@ -217,7 +217,7 @@ if diseases:
                     }
                     for row in model_rows
                 ]
-                st.dataframe(pd.DataFrame(model_table), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(model_table), width="stretch", hide_index=True)
 
                 global_rows = [
                     row
@@ -246,7 +246,7 @@ if diseases:
                                 for row in global_rows
                             ]
                         ),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 else:
@@ -284,7 +284,7 @@ if diseases:
                                 "Permutation SD": permutation["permutation_sd"],
                             }
                         ),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 else:
@@ -310,7 +310,7 @@ if diseases:
                                 for row in ensemble_checks
                             ]
                         ),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 else:
@@ -360,7 +360,7 @@ if diseases:
                     )
                     st.dataframe(
                         pd.DataFrame(disease_rows),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 else:
@@ -382,7 +382,7 @@ if diseases:
                             "additivity_passed",
                         ]
                     ],
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 

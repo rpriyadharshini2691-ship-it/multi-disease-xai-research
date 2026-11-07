@@ -149,7 +149,7 @@ if diseases:
                 )
                 table = _group_contributions(result["features"], disease, features)
                 st.subheader("Top feature contributions")
-                st.dataframe(table.head(5), use_container_width=True, hide_index=True)
+                st.dataframe(table.head(5), width="stretch", hide_index=True)
         except ApiError as exc:
             if exc.status_code == 422:
                 st.error(f"Input validation or explanation failed: {exc}")
@@ -175,7 +175,7 @@ if diseases:
             st.subheader("Global feature importance")
             st.dataframe(
                 table,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         else:

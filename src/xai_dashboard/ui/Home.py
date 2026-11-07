@@ -131,7 +131,7 @@ try:
                     }
                 )
                 table.index.name = "model"
-                st.dataframe(table, use_container_width=True)
+                st.dataframe(table, width="stretch")
                 cv = artifact.get("cv", {})
                 experiment = cv.get("training_metrics", {})
                 st.caption(
@@ -173,7 +173,7 @@ try:
         ]
         st.dataframe(
             activity_rows,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 except ApiError as exc:

@@ -94,7 +94,7 @@ if diseases:
         )
         st.dataframe(
             prediction_result["important_features"],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
